@@ -86,8 +86,10 @@ class Vsd2pngApplicationTests {
     //
     @Test
     void extractVisioFromWord_withstruct() throws IOException, OpenXML4JException {
-        FileInputStream fis = new FileInputStream("D:\\visio\\extractVsdFromWord\\docx-compat.docx");
+        FileInputStream fis = new FileInputStream("D:\\visio\\extractVsdFromWord\\docx.docx");
         XWPFDocument doc = new XWPFDocument(fis);
+
+        System.out.println("==========================================================");
 
         // 解析出内嵌Visio，并获知：id、inputstream
         PackageRelationshipCollection relationships = doc.getPackagePart().getRelationshipsByType(POIXMLDocument.OLE_OBJECT_REL_TYPE);
@@ -97,8 +99,9 @@ class Vsd2pngApplicationTests {
             InputStream inputStream = doc.getPackagePart().getRelatedPart(rel).getInputStream();
             FileOutputStream fos = new FileOutputStream("D:\\visio\\extractVsdFromWord\\" + id + ".vsd");
             copyStream(inputStream, fos);
-            System.out.println(">>>CONTAIN VISIO:>>>>"+id);
+            System.out.println(">>>>>>>>>This File Contain Visio:"+id);
         }
+        System.out.println("==========================================================");
 
         // 遍历表格
         // 包含假设：
@@ -155,6 +158,7 @@ class Vsd2pngApplicationTests {
                     List<XWPFTableCell> tableCells = row.getTableCells();
                     for (int j = 0; j < tableCells.size(); j++) {
                         XWPFTableCell cell = tableCells.get(j);
+
                         if (cell.getParagraphs().size() > 1) {
                             // 不包含sdt单元格的行，如果有多个段落，有理由怀疑里面包含visio元素
                             // 此时需要用底层接口探测，找到对应的 tc 结构
@@ -179,11 +183,11 @@ class Vsd2pngApplicationTests {
                                                     if("shape".equals(item.getLocalName())){
                                                         NamedNodeMap attributes = item.getAttributes();
                                                         Node objectID = attributes.getNamedItem("style");
-                                                        System.out.println("VISIO:STYLE>>>>>"+objectID.getNodeValue());
+                                                        System.out.println("HERE DISPLAY VISIO STYLE:"+objectID.getNodeValue());
                                                     }else if("OLEObject".equals(item.getLocalName())){
                                                         NamedNodeMap attributes = item.getAttributes();
                                                         Node objectID = attributes.getNamedItem("r:id");
-                                                        System.out.println("VISIO:ID>>>>>"+objectID.getNodeValue());
+                                                        System.out.println("HERE DISPLAY VISIO:"+objectID.getNodeValue());
                                                     }
                                                 }
                                             }
