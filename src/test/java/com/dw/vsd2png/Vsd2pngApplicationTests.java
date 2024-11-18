@@ -1,6 +1,7 @@
 package com.dw.vsd2png;
 
 import com.jacob.activeX.ActiveXComponent;
+import com.jacob.com.ComThread;
 import com.jacob.com.Dispatch;
 import org.apache.poi.ooxml.POIXMLDocument;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
@@ -24,6 +25,52 @@ import java.util.List;
 
 @SpringBootTest
 class Vsd2pngApplicationTests {
+
+    // DOCX->PDF
+    @Test
+    public void testWord() {
+        String source = "D:\\visio\\extractVsdFromWord\\docx.docx";
+        String target = "D:\\visio\\extractVsdFromWord\\docx.pdf";
+
+        long start = System.currentTimeMillis();
+        ActiveXComponent app = null;
+        Dispatch doc = null;
+        try {
+            File targetFile = new File(target);
+            if (targetFile.exists()) {
+                targetFile.delete();
+            }
+
+            ComThread.InitSTA();
+            app = new ActiveXComponent("Word.Application");
+            app.setProperty("Visible", false);
+            Dispatch docs = app.getProperty("Documents").toDispatch();
+
+            System.out.println("打开文档" + source);
+            doc = Dispatch.call(docs, "Open", source, false, true).toDispatch();
+
+            System.out.println("转换文档到PDF " + target);
+            Dispatch.call(doc, "SaveAs", target, 17); // wordSaveAsPDF为特定值17
+
+            long end = System.currentTimeMillis();
+            System.out.println("转换完成用时：" + (end - start) + "ms.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (doc != null) {
+                Dispatch.call(doc, "Close", false);
+            }
+
+            if (app != null) {
+                app.invoke("Quit", 0); // 不保存待定的更改
+            }
+
+            ComThread.Release();
+        }
+    }
+
+
+
     // VSD -> VSDX
     @Test
     void vsd2vsdx() throws IOException {
@@ -99,7 +146,7 @@ class Vsd2pngApplicationTests {
             InputStream inputStream = doc.getPackagePart().getRelatedPart(rel).getInputStream();
             FileOutputStream fos = new FileOutputStream("D:\\visio\\extractVsdFromWord\\" + id + ".vsd");
             copyStream(inputStream, fos);
-            System.out.println(">>>>>>>>>This File Contain Visio:"+id);
+            System.out.println(">>>>>>>>>This File Contain Visio:" + id);
         }
         System.out.println("==========================================================");
 
@@ -159,52 +206,135 @@ class Vsd2pngApplicationTests {
                     for (int j = 0; j < tableCells.size(); j++) {
                         XWPFTableCell cell = tableCells.get(j);
 
-                        if (cell.getParagraphs().size() > 1) {
-                            // 不包含sdt单元格的行，如果有多个段落，有理由怀疑里面包含visio元素
-                            // 此时需要用底层接口探测，找到对应的 tc 结构
-                            CTTc tc = row.getCtRow().getTcArray(j);
-                            if (tc.toString().indexOf("<o:OLEObject") > -1) {
+                        // cell底下可能有段落，也可能有表格
+                        int tableIndex = -1;
+                        CTTc ctTc = cell.getCTTc();
+                        NodeList cellChildrenNodes = ctTc.getDomNode().getChildNodes();
+                        for (int o = 0; o < cellChildrenNodes.getLength(); o++) {
+                            Node cellChild = cellChildrenNodes.item(o);
+                            String cellChildNodeName = cellChild.getLocalName();
+                            if ("tbl".equals(cellChildNodeName)) {
+                                tableIndex = o - 1; // 排除掉 tcPr 子元素
+                                break;
+                            }
+                        }
 
-                                List<XWPFParagraph> paragraphs = cell.getParagraphs();
-                                for (XWPFParagraph paragraph : paragraphs) {
-                                    // 这些段落里面如果有空的，可能就包含嵌入结构
-                                    if ("".equals(paragraph.getText())) {
-                                        CTP ctp = paragraph.getCTP();
-                                        List<CTR> rList = ctp.getRList();
-                                        if (rList.size() == 1) {
-                                            CTR ctr = rList.get(0);
-                                            CTObject[] objectArray = ctr.getObjectArray();
-                                            if (objectArray.length > 0) {
-                                                CTObject ctObject = objectArray[0];
-                                                Node domNode = ctObject.getDomNode();
-                                                NodeList childNodes = domNode.getChildNodes();
-                                                for (int k = 0; k < childNodes.getLength(); k++) {
-                                                    Node item = childNodes.item(k);
-                                                    if("shape".equals(item.getLocalName())){
-                                                        NamedNodeMap attributes = item.getAttributes();
-                                                        Node objectID = attributes.getNamedItem("style");
-                                                        System.out.println("HERE DISPLAY VISIO STYLE:"+objectID.getNodeValue());
-                                                    }else if("OLEObject".equals(item.getLocalName())){
-                                                        NamedNodeMap attributes = item.getAttributes();
-                                                        Node objectID = attributes.getNamedItem("r:id");
-                                                        System.out.println("HERE DISPLAY VISIO:"+objectID.getNodeValue());
-                                                    }
+                        if (tableIndex > -1) {
+                            // cell里面含有table
+                            List<XWPFParagraph> paragraphs = cell.getParagraphs();
+                            for (int k = 0; k < paragraphs.size(); k++) {
+                                XWPFParagraph paragraph = paragraphs.get(k);
+                                CTP ctp = paragraph.getCTP();
+
+                                // 缺陷是不能处理多个表格...后面再议
+                                if (k >= tableIndex) {
+                                    // 这里应该是个table
+                                    System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!这里应该是个表格>>" + k);
+                                    tableIndex = Integer.MAX_VALUE; // 只用一次
+
+
+                                    // 同时也假设内部table就是普通文字
+                                    XWPFTable xwpfTable = cell.getTables().get(0);
+                                    for (XWPFTableRow xwpfTableRow : xwpfTable.getRows()) {
+                                        System.out.print("ROW:-----------");
+                                        for (XWPFTableCell tableCell : xwpfTableRow.getTableCells()) {
+                                            System.out.print(tableCell.getText()+", ");
+                                        }
+                                        System.out.println();
+                                    }
+
+                                    System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!这里应该是个表格>>END");
+
+
+
+                                }
+
+                                // 这些段落里面如果有空的，可能就包含嵌入结构
+                                if (ctp.toString().contains("<o:OLEObject")) {
+                                    List<CTR> rList = ctp.getRList();
+                                    if (rList.size() == 1) {
+                                        CTR ctr = rList.get(0);
+                                        CTObject[] objectArray = ctr.getObjectArray();
+                                        if (objectArray.length > 0) {
+                                            CTObject ctObject = objectArray[0];
+                                            Node domNode = ctObject.getDomNode();
+                                            NodeList childNodes = domNode.getChildNodes();
+                                            for (int m = 0; m < childNodes.getLength(); m++) {
+                                                Node item = childNodes.item(m);
+                                                if ("shape".equals(item.getLocalName())) {
+                                                    NamedNodeMap attributes = item.getAttributes();
+                                                    Node objectID = attributes.getNamedItem("style");
+                                                    System.out.println("HERE DISPLAY VISIO STYLE:" + objectID.getNodeValue());
+                                                } else if ("OLEObject".equals(item.getLocalName())) {
+                                                    NamedNodeMap attributes = item.getAttributes();
+                                                    Node objectID = attributes.getNamedItem("r:id");
+                                                    System.out.println("HERE DISPLAY VISIO:" + objectID.getNodeValue());
                                                 }
                                             }
                                         }
-                                    } else {
-                                        // 段落中包含文字
-                                        System.out.println(paragraph.getText());
                                     }
+                                } else if(ctp.toString().contains("<w:drawing")){
+                                    List<XWPFPicture> embeddedPictures = paragraph.getRuns().get(0).getEmbeddedPictures();
+                                    for (XWPFPicture pic : embeddedPictures) {
+                                        System.out.println("!!!!!!!!!!!!这里包含图片:"+pic.getWidth()+";"+pic.getPictureData().getData().length);
+                                    }
+                                }else {
+                                    // 段落中包含文字
+                                    System.out.println(paragraph.getText());
                                 }
-                            } else {
-                                // 里面只有纯文字
-                                System.out.println(cell.getText());
                             }
                         } else {
-                            // 不包含sdt单元格的行，如果只有一个段落，则认为里面只有普通文字，不存在嵌入的
-                            System.out.println(cell.getText());
+                            // cell里面不包含table
+                            // 但是这里面可能有图片
+                            if (cell.getParagraphs().size() > 1) {
+                                // 不包含sdt单元格的行，如果有多个段落，有理由怀疑里面包含visio元素
+                                // 此时需要用底层接口探测，找到对应的 tc 结构
+                                CTTc tc = row.getCtRow().getTcArray(j);
+                                if (tc.toString().indexOf("<o:OLEObject") > -1) {
+
+                                    List<XWPFParagraph> paragraphs = cell.getParagraphs();
+                                    for (XWPFParagraph paragraph : paragraphs) {
+                                        // 这些段落里面如果有空的，可能就包含嵌入结构
+                                        if ("".equals(paragraph.getText())) {
+                                            CTP ctp = paragraph.getCTP();
+                                            List<CTR> rList = ctp.getRList();
+                                            if (rList.size() == 1) {
+                                                CTR ctr = rList.get(0);
+                                                CTObject[] objectArray = ctr.getObjectArray();
+                                                if (objectArray.length > 0) {
+                                                    CTObject ctObject = objectArray[0];
+                                                    Node domNode = ctObject.getDomNode();
+                                                    NodeList childNodes = domNode.getChildNodes();
+                                                    for (int k = 0; k < childNodes.getLength(); k++) {
+                                                        Node item = childNodes.item(k);
+                                                        if ("shape".equals(item.getLocalName())) {
+                                                            NamedNodeMap attributes = item.getAttributes();
+                                                            Node objectID = attributes.getNamedItem("style");
+                                                            System.out.println("HERE DISPLAY VISIO STYLE:" + objectID.getNodeValue());
+                                                        } else if ("OLEObject".equals(item.getLocalName())) {
+                                                            NamedNodeMap attributes = item.getAttributes();
+                                                            Node objectID = attributes.getNamedItem("r:id");
+                                                            System.out.println("HERE DISPLAY VISIO:" + objectID.getNodeValue());
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            // 段落中包含文字
+                                            System.out.println(paragraph.getText());
+                                        }
+                                    }
+                                } else {
+                                    // 里面只有纯文字
+                                    System.out.println(cell.getText());
+                                }
+                            } else {
+                                // 不包含sdt单元格的行，如果只有一个段落，则认为里面只有普通文字，不存在嵌入的
+                                System.out.println(cell.getText());
+                            }
                         }
+
+
                     }
                 }
             }
