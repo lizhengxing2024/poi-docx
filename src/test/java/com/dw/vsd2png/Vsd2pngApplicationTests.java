@@ -104,29 +104,6 @@ class Vsd2pngApplicationTests {
         }
     }
 
-    // insert png to docx
-    @Test
-    void insertPng2Docx() throws IOException, OpenXML4JException {
-        // 加载现有的Word文档
-        XWPFDocument doc = new XWPFDocument(new FileInputStream("D:\\visio\\extractVsdFromWord\\docx.docx"));
-
-        XWPFRun run = doc.createParagraph().createRun();
-
-        // 图片文件
-        FileInputStream imageStream = new FileInputStream("D:\\visio\\insertPng2Docx\\page1-页-1.png");
-        run.addPicture(imageStream, XWPFDocument.PICTURE_TYPE_JPEG, "image.jpg", Units.toEMU(200), Units.toEMU(200));
-        imageStream.close();
-
-        // 将修改后的文档写入新文件
-        FileOutputStream out = new FileOutputStream("D:\\visio\\insertPng2Docx\\docx-image.docx");
-        doc.write(out);
-        out.close();
-
-        // 关闭文档
-        doc.close();
-    }
-
-
     // 从 DOCX 中提取表格完整数据
     // 1. 各单元格内容（普通的、下拉框）
     // 2. Visio文件以及其所在位置

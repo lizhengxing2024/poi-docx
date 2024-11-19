@@ -1,17 +1,20 @@
 package com.dw.vsd2png;
 
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.*;
 import org.junit.jupiter.api.Test;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
 @SpringBootTest
 class DocxWriter {
     @Test
-    public void writeTable() throws IOException {
+    public void writeTable() throws IOException, InvalidFormatException {
         XWPFDocument document = new XWPFDocument();
 
         int rowCount = 6;
@@ -27,6 +30,11 @@ class DocxWriter {
                 XWPFRun run = tableCell.getParagraphs().get(0).createRun();
                 run.setBold(true);
                 run.setText("Cell " + row + "," + col);
+
+                // 插入图片
+                FileInputStream imageStream = new FileInputStream("D:\\visio\\insertPng2Docx\\page1-页-1.png");
+                tableCell.addParagraph().createRun().addPicture(imageStream, XWPFDocument.PICTURE_TYPE_JPEG, "image.jpg", Units.toEMU(50), Units.toEMU(50));
+                imageStream.close();
 
                 // 合并单元格
                 if (row > 3) {
