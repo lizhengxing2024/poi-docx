@@ -26,12 +26,12 @@ class DocxWriter {
             XWPFTableRow tableRow = table.getRow(row);
 
 
-            // 插入下拉框
-            CTSdtCell ctSdtCell = tableRow.getCtRow().addNewSdt();
-            CTSdtListItem ctSdtListItem = ctSdtCell.addNewSdtPr().addNewDropDownList().addNewListItem();
-            ctSdtListItem.setDisplayText("XYZ");
-            ctSdtListItem.setValue("XYZ");
-            ctSdtCell.addNewSdtContent().addNewTc().addNewP().addNewR().addNewT().setStringValue("XYZ");
+//            // 插入下拉框
+//            CTSdtCell ctSdtCell = tableRow.getCtRow().addNewSdt();
+//            CTSdtListItem ctSdtListItem = ctSdtCell.addNewSdtPr().addNewDropDownList().addNewListItem();
+//            ctSdtListItem.setDisplayText("XYZ");
+//            ctSdtListItem.setValue("XYZ");
+//            ctSdtCell.addNewSdtContent().addNewTc().addNewP().addNewR().addNewT().setStringValue("XYZ");
 
 
             for (int col = 0; col < columnCount; col++) {
