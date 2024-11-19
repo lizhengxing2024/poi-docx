@@ -5,10 +5,7 @@ import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.*;
 import org.apache.xmlbeans.XmlObject;
 import org.junit.jupiter.api.Test;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtBlock;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtCell;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtListItem;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.FileInputStream;
@@ -50,6 +47,14 @@ class DocxWriter {
                 FileInputStream imageStream = new FileInputStream("D:\\visio\\insertPng2Docx\\page1-页-1.png");
                 tableCell.addParagraph().createRun().addPicture(imageStream, XWPFDocument.PICTURE_TYPE_JPEG, "image.jpg", Units.toEMU(50), Units.toEMU(50));
                 imageStream.close();
+
+                // 插入下拉框
+                CTSdtRun ctSdtRun = tableCell.addParagraph().getCTP().addNewSdt();
+                CTSdtListItem ctSdtListItem1 = ctSdtRun.addNewSdtPr().addNewDropDownList().addNewListItem();
+                ctSdtListItem1.setDisplayText("XYZ");
+                ctSdtListItem1.setValue("XYZ");
+                ctSdtRun.addNewSdtContent().addNewR().addNewT().setStringValue("XYZ");
+
 
                 // 合并单元格
                 if (row > 3) {
