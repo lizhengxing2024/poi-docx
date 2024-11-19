@@ -116,9 +116,12 @@ class Vsd2pngApplicationTests {
         System.out.println("==========================================================");
 
         // 解析出内嵌Visio，并获知：id、inputstream
-        PackageRelationshipCollection relationships = doc.getPackagePart().getRelationshipsByType(POIXMLDocument.OLE_OBJECT_REL_TYPE);
+        PackagePart packagePart = doc.getPackagePart();
+        System.out.println("getPartName:" + packagePart.getPartName());
+        PackageRelationshipCollection relationships = packagePart.getRelationshipsByType(POIXMLDocument.OLE_OBJECT_REL_TYPE);
         for (int i = 0; i < relationships.size(); i++) {
             PackageRelationship rel = relationships.getRelationship(i);
+            System.out.println("getTargetURI:" + rel.getTargetURI());
             String id = rel.getId();
             InputStream inputStream = doc.getPackagePart().getRelatedPart(rel).getInputStream();
             FileOutputStream fos = new FileOutputStream("D:\\visio\\extractVsdFromWord\\" + id + ".vsd");
