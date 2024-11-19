@@ -3,7 +3,11 @@ package com.dw.vsd2png;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.*;
+import org.apache.xmlbeans.XmlObject;
 import org.junit.jupiter.api.Test;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtBlock;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtCell;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtListItem;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -23,8 +27,19 @@ class DocxWriter {
         table.setWidth(11907 - 1800 - 1800); // A4纸张的可用宽度
         for (int row = 0; row < rowCount; row++) {
             XWPFTableRow tableRow = table.getRow(row);
+
+
+            // 插入下拉框
+            CTSdtCell ctSdtCell = tableRow.getCtRow().addNewSdt();
+            CTSdtListItem ctSdtListItem = ctSdtCell.addNewSdtPr().addNewDropDownList().addNewListItem();
+            ctSdtListItem.setDisplayText("XYZ");
+            ctSdtListItem.setValue("XYZ");
+            ctSdtCell.addNewSdtContent().addNewTc().addNewP().addNewR().addNewT().setStringValue("XYZ");
+
+
             for (int col = 0; col < columnCount; col++) {
                 XWPFTableCell tableCell = tableRow.getCell(col);
+
 
                 // 控制样式
                 XWPFRun run = tableCell.getParagraphs().get(0).createRun();
