@@ -16,10 +16,10 @@ class DocxWriter {
     public void writeTable() throws IOException {
         XWPFDocument document = new XWPFDocument();
 
-        int rowCount = 2;
-        int columnCount = 2;
+        int rowCount = 6;
+        int columnCount = 4;
         XWPFTable table = document.createTable(rowCount, columnCount);
-        table.setWidth(11907 - 1800 - 1800);
+        table.setWidth(11907 - 1800 - 1800); // A4纸张的可用宽度
         for (int row = 0; row < rowCount; row++) {
             XWPFTableRow tableRow = table.getRow(row);
             for (int col = 0; col < columnCount; col++) {
