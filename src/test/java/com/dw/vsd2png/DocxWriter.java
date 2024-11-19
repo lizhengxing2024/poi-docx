@@ -1,10 +1,8 @@
 package com.dw.vsd2png;
 
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
-import org.apache.poi.xwpf.usermodel.XWPFTableCell;
-import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.apache.poi.xwpf.usermodel.*;
 import org.junit.jupiter.api.Test;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.FileOutputStream;
@@ -24,7 +22,20 @@ class DocxWriter {
             XWPFTableRow tableRow = table.getRow(row);
             for (int col = 0; col < columnCount; col++) {
                 XWPFTableCell tableCell = tableRow.getCell(col);
-                tableCell.setText("Cell " + row + "," + col);
+
+                // 控制样式
+                XWPFRun run = tableCell.getParagraphs().get(0).createRun();
+                run.setBold(true);
+                run.setText("Cell " + row + "," + col);
+
+                // 合并单元格
+                if (row > 3) {
+                    if (col == 1) {
+                        tableCell.getCTTc().addNewTcPr().addNewHMerge().setVal(STMerge.RESTART);
+                    } else {
+                        tableCell.getCTTc().addNewTcPr().addNewHMerge().setVal(STMerge.CONTINUE);
+                    }
+                }
             }
         }
 
@@ -32,5 +43,13 @@ class DocxWriter {
         document.write(out);
         out.close();
         document.close();
+    }
+
+    private class QuestionItem {
+        public String label;
+        public String value;
+
+        // layout
+        int rowspan;
     }
 }
