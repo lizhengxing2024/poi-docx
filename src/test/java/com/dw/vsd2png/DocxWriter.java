@@ -1,5 +1,6 @@
 package com.dw.vsd2png;
 
+import org.apache.poi.common.usermodel.PictureType;
 import org.apache.poi.ooxml.POIXMLDocument;
 import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.ooxml.POIXMLException;
@@ -25,9 +26,6 @@ import java.lang.reflect.InvocationTargetException;
 class DocxWriter {
 
     private void addVisio(XWPFDocument document) throws OpenXML4JException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, IOException {
-        InputStream is = new FileInputStream("D://visio//vsdx.vsdx");
-        byte[] visioData = IOUtils.toByteArrayWithMaxLength(is, XWPFPictureData.getMaxImageSize());
-
         /**
          * XWPFRelation
          *      type:
@@ -39,12 +37,26 @@ class DocxWriter {
          *          "/word/embeddings/Microsoft_Visio___#.vsdx"
          */
 
-        /**
-         * proposal: 根据现存嵌入的数量，生成的建议文件名，例如："/word/embeddings/Microsoft_Visio___1.vsdx"
-         */
-        int idx = document.getAllEmbeddedParts().size() + 1;
 
-        // 制造 XWPFRelation
+        // 写入缩略图
+        InputStream picIs = new FileInputStream("D://visio//vsdx.png");
+        byte[] picData = IOUtils.toByteArrayWithMaxLength(picIs, XWPFPictureData.getMaxImageSize());
+        int picIdx = document.getNextPicNameNumber(PictureType.PNG);
+        POIXMLRelation picRelDesc = XWPFRelation.IMAGE_PNG;
+        XWPFPictureData xwpfPicData = (XWPFPictureData) document.createRelationship(picRelDesc, XWPFFactory.getInstance(), picIdx);
+        PackagePart picDataPart = xwpfPicData.getPackagePart();
+        try (OutputStream out = picDataPart.getOutputStream()) {
+            out.write(picData);
+        } catch (IOException e) {
+            throw new POIXMLException(e);
+        }
+        String picRelationId = document.getRelationId(xwpfPicData);
+        System.out.println("PIC:"+picRelationId);
+
+        /**
+         * 写入Visio
+         */
+        // 制造 Vsio-XWPFRelation
         POIXMLRelation.NoArgConstructor noArgConstructor = XWPFVisioData::new;
         POIXMLRelation.ParentPartConstructor parentPartConstructor = (parent, part) -> new XWPFVisioData();
         Class<?> clazz = XWPFRelation.class;
@@ -52,20 +64,25 @@ class DocxWriter {
                 POIXMLRelation.NoArgConstructor.class,
                 POIXMLRelation.ParentPartConstructor.class);
         constructor.setAccessible(true);
-        XWPFRelation relDesc = (XWPFRelation) constructor.newInstance("application/vnd.ms-visio.drawing",
+        XWPFRelation visioRelDesc = (XWPFRelation) constructor.newInstance("application/vnd.ms-visio.drawing",
                 POIXMLDocument.PACK_OBJECT_REL_TYPE,
                 "/word/embeddings/Microsoft_Visio___#.vsdx",
                 noArgConstructor, parentPartConstructor);
-
-        // 创建XWPFVisioData
-        XWPFVisioData dwpfVisioData = (XWPFVisioData) document.createRelationship(relDesc, XWPFFactory.getInstance(), idx);
-        PackagePart picDataPart = dwpfVisioData.getPackagePart();
-        try (OutputStream out = picDataPart.getOutputStream()) {
+        // 写入
+        InputStream visioIs = new FileInputStream("D://visio//vsdx.vsdx");
+        byte[] visioData = IOUtils.toByteArrayWithMaxLength(visioIs, XWPFPictureData.getMaxImageSize());
+        int visioIdx = document.getAllEmbeddedParts().size() + 1; // proposal: 根据现存嵌入的数量，生成的建议文件名，例如："/word/embeddings/Microsoft_Visio___1.vsdx"
+        XWPFVisioData dwpfVisioData = (XWPFVisioData) document.createRelationship(visioRelDesc, XWPFFactory.getInstance(), visioIdx);
+        PackagePart visioDataPart = dwpfVisioData.getPackagePart();
+        try (OutputStream out = visioDataPart.getOutputStream()) {
             out.write(visioData);
         } catch (IOException e) {
             throw new POIXMLException(e);
         }
-        String relationId = document.getRelationId(dwpfVisioData);
+        String visioRelationId = document.getRelationId(dwpfVisioData);
+        System.out.println("VISIO:"+visioRelationId);
+
+
 //        XWPFVisioData test = (XWPFVisioData) document.getRelationById(relationId);
 //        System.out.println(test);
 //        document.createRelationship()
