@@ -25,10 +25,8 @@ import java.lang.reflect.InvocationTargetException;
 class DocxWriter {
 
     private void addVisio(XWPFDocument document) throws OpenXML4JException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, IOException {
-        InputStream is = new FileInputStream("D://visio//visio.vsd");
+        InputStream is = new FileInputStream("D://visio//vsdx.vsdx");
         byte[] visioData = IOUtils.toByteArrayWithMaxLength(is, XWPFPictureData.getMaxImageSize());
-
-
 
         /**
          * XWPFRelation
@@ -67,7 +65,9 @@ class DocxWriter {
         } catch (IOException e) {
             throw new POIXMLException(e);
         }
-        System.out.println(dwpfVisioData);
+        String relationId = document.getRelationId(dwpfVisioData);
+//        XWPFVisioData test = (XWPFVisioData) document.getRelationById(relationId);
+//        System.out.println(test);
 //        document.createRelationship()
 
     }
