@@ -2,30 +2,35 @@ package com.dw.vsd2png;
 
 import org.apache.poi.common.usermodel.PictureType;
 import org.apache.poi.ooxml.POIXMLDocument;
-import org.apache.poi.ooxml.POIXMLDocumentPart;
 import org.apache.poi.ooxml.POIXMLException;
 import org.apache.poi.ooxml.POIXMLRelation;
-import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ooxml.util.DocumentHelper;
 import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.*;
 import org.apache.xmlbeans.XmlException;
+import org.apache.xmlbeans.XmlToken;
 import org.junit.jupiter.api.Test;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtListItem;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtRun;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
+import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
+
 @SpringBootTest
 class DocxWriter {
 
-    private void addVisio(XWPFDocument document) throws OpenXML4JException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, IOException {
+    private void addVisio(XWPFDocument document) throws OpenXML4JException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, IOException, SAXException, XmlException {
         /**
          * XWPFRelation
          *      type:
@@ -38,7 +43,9 @@ class DocxWriter {
          */
 
 
-        // 写入缩略图
+        /**
+         * 写入缩略图
+         */
         InputStream picIs = new FileInputStream("D://visio//vsdx.png");
         byte[] picData = IOUtils.toByteArrayWithMaxLength(picIs, XWPFPictureData.getMaxImageSize());
         int picIdx = document.getNextPicNameNumber(PictureType.PNG);
@@ -51,7 +58,7 @@ class DocxWriter {
             throw new POIXMLException(e);
         }
         String picRelationId = document.getRelationId(xwpfPicData);
-        System.out.println("PIC:"+picRelationId);
+        System.out.println("PIC:" + picRelationId);
 
         /**
          * 写入Visio
@@ -80,18 +87,39 @@ class DocxWriter {
             throw new POIXMLException(e);
         }
         String visioRelationId = document.getRelationId(dwpfVisioData);
-        System.out.println("VISIO:"+visioRelationId);
-
-
+        System.out.println("VISIO:" + visioRelationId);
 //        XWPFVisioData test = (XWPFVisioData) document.getRelationById(relationId);
-//        System.out.println(test);
-//        document.createRelationship()
 
+        /**
+         * 写入XML
+         */
+        String shapeId = "_x0000_i1025";
+        String shapeWidth = "415.15pt";
+        String shapeHeight = "52.85pt";
+        String objectXml = "<w:object xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" " +
+                "               w:dxaOrig=\"9706\" w:dyaOrig=\"1232\">" +
+                "           <v:shape xmlns:v=\"urn:schemas-microsoft-com:vml\" " +
+                "                    xmlns:o=\"urn:schemas-microsoft-com:office:office\" " +
+                "                    xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" " +
+                "               id=\"" + shapeId + "\"\n" +
+                "               style=\"width:"+shapeWidth+";height:"+shapeHeight+"\" o:ole=\"\">\n" +
+                "               <v:imagedata r:id=\"" + picRelationId + "\" o:title=\"\" />\n" +
+                "           </v:shape>\n" +
+                "           <o:OLEObject xmlns:o=\"urn:schemas-microsoft-com:office:office\" " +
+                "                        xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" " +
+                "               Type=\"Embed\" ProgID=\"Visio.Drawing.15\" ShapeID=\"" + shapeId + "\"\n" +
+                "               DrawAspect=\"Content\" ObjectID=\"_1793607303\" r:id=\"" + visioRelationId + "\" />" +
+                "</w:object>";
+        InputSource objXmlIs = new InputSource(new StringReader(objectXml));
+        org.w3c.dom.Document objectDoc = DocumentHelper.readDocument(objXmlIs);
+        XmlToken xmlObject = XmlToken.Factory.parse(objectDoc.getDocumentElement(), DEFAULT_XML_OPTIONS);
+        CTR ctr = document.createParagraph().createRun().getCTR();
+        ctr.set(xmlObject);
     }
 
 
     @Test
-    public void writeTable() throws IOException, OpenXML4JException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+    public void writeTable() throws IOException, OpenXML4JException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, XmlException, SAXException {
         XWPFDocument document = new XWPFDocument();
 
         // 插入visio
