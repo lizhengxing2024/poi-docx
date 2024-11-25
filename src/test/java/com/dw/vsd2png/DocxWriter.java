@@ -10,9 +10,12 @@ import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.util.IOUtils;
 import org.apache.poi.util.Units;
 import org.apache.poi.xwpf.usermodel.*;
+import org.apache.xmlbeans.XmlCursor;
 import org.apache.xmlbeans.XmlException;
 import org.apache.xmlbeans.XmlToken;
 import org.junit.jupiter.api.Test;
+import org.openxmlformats.schemas.officeDocument.x2006.math.CTOMath;
+import org.openxmlformats.schemas.officeDocument.x2006.math.CTOMathPara;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtListItem;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtRun;
@@ -20,7 +23,15 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import uk.ac.ed.ph.snuggletex.SnuggleEngine;
+import uk.ac.ed.ph.snuggletex.SnuggleInput;
+import uk.ac.ed.ph.snuggletex.SnuggleSession;
 
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -29,6 +40,8 @@ import static org.apache.poi.ooxml.POIXMLTypeLoader.DEFAULT_XML_OPTIONS;
 
 @SpringBootTest
 class DocxWriter {
+
+
 
     private void addVisio(XWPFDocument document) throws OpenXML4JException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, IOException, SAXException, XmlException {
         /**
@@ -102,7 +115,7 @@ class DocxWriter {
                 "                    xmlns:o=\"urn:schemas-microsoft-com:office:office\" " +
                 "                    xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" " +
                 "               id=\"" + shapeId + "\"\n" +
-                "               style=\"width:"+shapeWidth+";height:"+shapeHeight+"\" o:ole=\"\">\n" +
+                "               style=\"width:" + shapeWidth + ";height:" + shapeHeight + "\" o:ole=\"\">\n" +
                 "               <v:imagedata r:id=\"" + picRelationId + "\" o:title=\"\" />\n" +
                 "           </v:shape>\n" +
                 "           <o:OLEObject xmlns:o=\"urn:schemas-microsoft-com:office:office\" " +
@@ -117,10 +130,72 @@ class DocxWriter {
         ctr.set(xmlObject);
     }
 
+    private  CTOMath getOMML(String mathML) throws TransformerException, IOException, XmlException {
+
+
+        File stylesheet = new File("C:\\Program Files\\Microsoft Office\\Office16\\MML2OMML.XSL");
+        StreamSource stylesource = new StreamSource(stylesheet);
+
+        TransformerFactory tFactory = TransformerFactory.newInstance();
+        Transformer transformer = tFactory.newTransformer(stylesource);
+
+        StringReader stringreader = new StringReader(mathML);
+        StreamSource source = new StreamSource(stringreader);
+
+        StringWriter stringwriter = new StringWriter();
+        StreamResult result = new StreamResult(stringwriter);
+
+        transformer.transform(source, result);
+
+        String ooML = stringwriter.toString();
+        stringwriter.close();
+
+        CTOMathPara ctOMathPara = CTOMathPara.Factory.parse(ooML);
+
+        CTOMath ctOMath = ctOMathPara.getOMathArray(0);
+
+        //for making this to work with Office 2007 Word also, special font settings are necessary
+        XmlCursor xmlcursor = ctOMath.newCursor();
+        while (xmlcursor.hasNextToken()) {
+            XmlCursor.TokenType tokentype = xmlcursor.toNextToken();
+            if (tokentype.isStart()) {
+                if (xmlcursor.getObject() instanceof CTR cTR) {
+                    cTR.addNewRPr().addNewRFonts().setAscii("Cambria Math");
+                    cTR.getRPr().getRFontsArray(0).setHAnsi("Cambria Math");
+                }
+            }
+        }
+
+        return ctOMath;
+    }
+    private void addMath(XWPFDocument document) throws IOException, XmlException, TransformerException {
+        System.setProperty("jdk.xml.xpathExprGrpLimit", "0");
+        System.setProperty("jdk.xml.xpathExprOpLimit", "0");
+        System.setProperty("jdk.xml.xpathTotalOpLimit", "0");
+
+
+        String latex = "$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$";
+
+        SnuggleEngine engine = new SnuggleEngine();
+        SnuggleSession session = engine.createSession();
+        SnuggleInput input = new SnuggleInput(latex);
+        session.parseInput(input);
+        String mathML = session.buildXMLString();
+        System.out.println(mathML);
+
+        XWPFParagraph paragraph = document.createParagraph();
+        paragraph.setAlignment(ParagraphAlignment.LEFT);
+        paragraph.setFontAlignment(ParagraphAlignment.LEFT.getValue());
+        CTOMath ctoMath = paragraph.getCTP().addNewOMath();
+        ctoMath.set(getOMML(mathML));
+    }
 
     @Test
-    public void writeTable() throws IOException, OpenXML4JException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, XmlException, SAXException {
+    public void writeTable() throws IOException, OpenXML4JException, InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException, XmlException, SAXException, TransformerException {
         XWPFDocument document = new XWPFDocument();
+
+        // 插入公式
+        this.addMath(document);
 
         // 插入visio
         this.addVisio(document);
