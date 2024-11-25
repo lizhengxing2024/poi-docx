@@ -1,5 +1,10 @@
 package com.dw.vsd2png;
 
+
+
+import net.sourceforge.jeuclid.context.LayoutContextImpl;
+import net.sourceforge.jeuclid.context.Parameter;
+import net.sourceforge.jeuclid.converter.Converter;
 import org.apache.poi.common.usermodel.PictureType;
 import org.apache.poi.ooxml.POIXMLDocument;
 import org.apache.poi.ooxml.POIXMLException;
@@ -21,6 +26,8 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtListItem;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtRun;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STMerge;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import uk.ac.ed.ph.snuggletex.SnuggleEngine;
@@ -32,6 +39,7 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
+import java.awt.*;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -168,6 +176,27 @@ class DocxWriter {
 
         return ctOMath;
     }
+
+    private void mathml2png(Node mathmlNode) throws IOException {
+
+
+        //创建转换器
+        Converter converter = Converter.getInstance();
+        //创建layoutContext并设置相关参数
+        //参数设置可以参考net.sourceforge.jeuclid.context.Parameter类
+        //参数默认值可以参考LayoutContextImpl类构造方法
+        LayoutContextImpl layoutContext = (LayoutContextImpl) LayoutContextImpl.getDefaultLayoutContext();
+        //设置公式字体大小，默认12.0pt
+        layoutContext.setParameter(Parameter.MATHSIZE, 30);
+        //设置公式颜色，默认黑色
+        layoutContext.setParameter(Parameter.MATHCOLOR, Color.RED);
+        //转换
+        Dimension dimension = converter.convert(mathmlNode, new FileOutputStream("math.png"), "image/png", layoutContext);
+        if(dimension != null){
+            System.out.println("图片转换成功！高：" + dimension.getHeight() + " 宽：" + dimension.getWidth());
+        }
+    }
+
     private void addMath(XWPFDocument document) throws IOException, XmlException, TransformerException {
         System.setProperty("jdk.xml.xpathExprGrpLimit", "0");
         System.setProperty("jdk.xml.xpathExprOpLimit", "0");
@@ -181,7 +210,12 @@ class DocxWriter {
         SnuggleInput input = new SnuggleInput(latex);
         session.parseInput(input);
         String mathML = session.buildXMLString();
+        NodeList nodeList = session.buildDOMSubtree();
+        mathml2png(nodeList.item(0));
         System.out.println(mathML);
+
+
+
 
         XWPFParagraph paragraph = document.createParagraph();
         paragraph.setAlignment(ParagraphAlignment.LEFT);

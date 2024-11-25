@@ -116,6 +116,13 @@
 			<artifactId>jlatexmath</artifactId>
 			<version>1.0.7</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/de.rototor.jeuclid/jeuclid-core -->
+		<dependency>
+			<groupId>de.rototor.jeuclid</groupId>
+			<artifactId>jeuclid-core</artifactId>
+			<version>3.1.14</version>
+		</dependency>
+
 
 
 	</dependencies>
