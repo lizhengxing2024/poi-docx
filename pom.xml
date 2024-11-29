@@ -125,6 +125,19 @@
 
 
 
+
+		<!-- https://mvnrepository.com/artifact/org.docx4j/docx4j-core -->
+		<dependency>
+			<groupId>org.docx4j</groupId>
+			<artifactId>docx4j-core</artifactId>
+			<version>11.5.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.docx4j</groupId>
+			<artifactId>docx4j-JAXB-ReferenceImpl</artifactId>
+			<version>11.5.0</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>

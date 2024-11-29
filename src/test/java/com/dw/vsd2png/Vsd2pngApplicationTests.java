@@ -8,7 +8,6 @@ import org.apache.poi.openxml4j.exceptions.OpenXML4JException;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackageRelationship;
 import org.apache.poi.openxml4j.opc.PackageRelationshipCollection;
-import org.apache.poi.util.Units;
 import org.apache.poi.xdgf.usermodel.XmlVisioDocument;
 import org.apache.poi.xdgf.usermodel.shape.ShapeRenderer;
 import org.apache.poi.xdgf.util.VsdxToPng;
@@ -26,9 +25,10 @@ import java.util.List;
 @SpringBootTest
 class Vsd2pngApplicationTests {
 
+
     // DOCX->PDF
     @Test
-    public void testWord() {
+    public void docx2pdf() {
         String source = "D:\\visio\\extractVsdFromWord\\docx.docx";
         String target = "D:\\visio\\extractVsdFromWord\\docx.pdf";
 
@@ -68,7 +68,6 @@ class Vsd2pngApplicationTests {
             ComThread.Release();
         }
     }
-
 
 
     // VSD -> VSDX
@@ -218,13 +217,12 @@ class Vsd2pngApplicationTests {
                                     for (XWPFTableRow xwpfTableRow : xwpfTable.getRows()) {
                                         System.out.print("ROW:-----------");
                                         for (XWPFTableCell tableCell : xwpfTableRow.getTableCells()) {
-                                            System.out.print(tableCell.getText()+", ");
+                                            System.out.print(tableCell.getText() + ", ");
                                         }
                                         System.out.println();
                                     }
 
                                     System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!这里应该是个表格>>END");
-
 
 
                                 }
@@ -253,12 +251,12 @@ class Vsd2pngApplicationTests {
                                             }
                                         }
                                     }
-                                } else if(ctp.toString().contains("<w:drawing")){
+                                } else if (ctp.toString().contains("<w:drawing")) {
                                     List<XWPFPicture> embeddedPictures = paragraph.getRuns().get(0).getEmbeddedPictures();
                                     for (XWPFPicture pic : embeddedPictures) {
-                                        System.out.println("!!!!!!!!!!!!这里包含图片:"+pic.getWidth()+";"+pic.getPictureData().getData().length);
+                                        System.out.println("!!!!!!!!!!!!这里包含图片:" + pic.getWidth() + ";" + pic.getPictureData().getData().length);
                                     }
-                                }else {
+                                } else {
                                     // 段落中包含文字
                                     System.out.println(paragraph.getText());
                                 }
